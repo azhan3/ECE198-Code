@@ -21,12 +21,18 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+#define TRIG_PIN GPIO_PIN_1
+#define TRIG_PORT GPIOA
+#define ECHO_PIN GPIO_PIN_0
+#define ECHO_PORT GPIOA
 
+
+#define MAX_PWM_VALUE 400
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -58,7 +64,22 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t tx_buff[]={0,1,2,3,4,5,6,7,8,9};
+uint8_t tx_buff[]={0,1,2,3,4,5,6,7};
+
+float measure(GPIO_TypeDef *GPIOx, uint16_t TRIG, uint16_t ECHO) {
+    HAL_GPIO_WritePin(GPIOx, TRIG, GPIO_PIN_SET);
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(GPIOx, TRIG, GPIO_PIN_RESET);
+
+    while (HAL_GPIO_ReadPin(GPIOx, ECHO) == GPIO_PIN_RESET);
+    uint32_t start_time = HAL_GetTick();
+    while (HAL_GPIO_ReadPin(GPIOx, ECHO) == GPIO_PIN_SET);
+    uint32_t end_time = HAL_GetTick();
+
+    uint32_t pulse_duration = (end_time - start_time) * 1000;
+    float distance = ((pulse_duration * 0.0343) / 2);
+    return distance;
+}
 /* USER CODE END 0 */
 
 /**
@@ -100,6 +121,13 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  float distance = measure(GPIOA, GPIO_PIN_1, GPIO_PIN_0);
+//	  memcpy(&tx_buff[0], &distance, sizeof(distance));
+//	  tx_buff[0] = distance;
+
+	  distance = measure(GPIOC, GPIO_PIN_3, GPIO_PIN_2);
+//	  memcpy(&tx_buff[4], &distance, sizeof(distance));
+//	  tx_buff[1] = distance;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -223,11 +251,45 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
