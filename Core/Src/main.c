@@ -64,7 +64,7 @@ static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN 0 */
 uint8_t tx_buff[]={0,1,2,3,4,5,6,7,8,9};
 
-uint32_t DWT_Delay_Init(void)
+void DWT_Delay_Init(void)
 {
 	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 	DWT->CYCCNT = 0; // Reset the counter
@@ -137,11 +137,11 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  	MX_GPIO_Init();
-  	MX_USART2_UART_Init();
-	DWT_Delay_Init();
+  MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  uint16_t cnt = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -150,15 +150,17 @@ int main(void)
   {
     /* USER CODE END WHILE */
 	  float distance = measure(GPIOA, GPIO_PIN_1, GPIO_PIN_0);
-//	  memcpy(&tx_buff[0], &distance, sizeof(distance));
-//	  tx_buff[0] = distance;
+	  memcpy(&tx_buff[0], &distance, sizeof(distance));
 
 	  distance = measure(GPIOC, GPIO_PIN_3, GPIO_PIN_2);
-//	  memcpy(&tx_buff[4], &distance, sizeof(distance));
-//	  tx_buff[1] = distance;
+	  memcpy(&tx_buff[4], &distance, sizeof(distance));
     /* USER CODE BEGIN 3 */
-	  HAL_UART_Transmit(&huart1, tx_buff, 10, 1000);
-	  HAL_Delay(10000);
+	  HAL_UART_Transmit(&huart1, tx_buff, 10, 250);
+	  HAL_Delay(50);
+	  cnt++;
+	  if (cnt == 250) {
+		  break;
+	  }
   }
   /* USER CODE END 3 */
 }
