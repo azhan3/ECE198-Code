@@ -22,17 +22,15 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include <stdio.h>
+#include "stm32f4xx_hal_tim.h"
+#include "stm32f4xx_hal_gpio.h"
+#include "stm32f4xx_hal_uart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define TRIG_PIN GPIO_PIN_1
-#define TRIG_PORT GPIOA
-#define ECHO_PIN GPIO_PIN_0
-#define ECHO_PORT GPIOA
 
-
-#define MAX_PWM_VALUE 400
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -64,20 +62,49 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t tx_buff[]={0,1,2,3,4,5,6,7};
+uint8_t tx_buff[]={0,1,2,3,4,5,6,7,8,9};
+
+uint32_t DWT_Delay_Init(void)
+{
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0; // Reset the counter
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk; // Enable the counter
+
+}
+__STATIC_INLINE void DWT_Delay_us(volatile uint32_t au32_microseconds)
+{
+  uint32_t au32_initial_ticks = DWT->CYCCNT;
+  uint32_t au32_ticks = (HAL_RCC_GetHCLKFreq() / 1000000);
+  au32_microseconds *= au32_ticks;
+  while ((DWT->CYCCNT - au32_initial_ticks) < au32_microseconds-au32_ticks);
+}
 
 float measure(GPIO_TypeDef *GPIOx, uint16_t TRIG, uint16_t ECHO) {
+    // Trigger the ultrasonic sensor
     HAL_GPIO_WritePin(GPIOx, TRIG, GPIO_PIN_SET);
-    HAL_Delay(1);
+    DWT_Delay_us(10);  // Precise 10 μs pulse
     HAL_GPIO_WritePin(GPIOx, TRIG, GPIO_PIN_RESET);
 
-    while (HAL_GPIO_ReadPin(GPIOx, ECHO) == GPIO_PIN_RESET);
-    uint32_t start_time = HAL_GetTick();
-    while (HAL_GPIO_ReadPin(GPIOx, ECHO) == GPIO_PIN_SET);
-    uint32_t end_time = HAL_GetTick();
+    // Wait for ECHO to go HIGH with a timeout
+    uint32_t timeout = DWT->CYCCNT + (SystemCoreClock / 1000 * 50);  // 50 ms timeout
+    while (HAL_GPIO_ReadPin(GPIOx, ECHO) == GPIO_PIN_RESET) {
+        if (DWT->CYCCNT > timeout) return -1.0;  // Timeout error
+    }
+    uint32_t start_time = DWT->CYCCNT;
 
-    uint32_t pulse_duration = (end_time - start_time) * 1000;
-    float distance = ((pulse_duration * 0.0343) / 2);
+    // Wait for ECHO to go LOW with a timeout
+    while (HAL_GPIO_ReadPin(GPIOx, ECHO) == GPIO_PIN_SET) {
+        if (DWT->CYCCNT > timeout) return -1.0;  // Timeout error
+    }
+    uint32_t end_time = DWT->CYCCNT;
+
+    // Calculate pulse duration in microseconds
+    float pulse_duration_us = (float)(end_time - start_time) / (SystemCoreClock / 1000000.0);
+
+    // Calculate distance with temperature compensation
+    float speed_of_sound = 343;  // m/s
+    float distance = (pulse_duration_us * speed_of_sound / 10000) / 2;  // cm
+
     return distance;
 }
 /* USER CODE END 0 */
@@ -110,9 +137,9 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_USART2_UART_Init();
-  MX_USART1_UART_Init();
+  	MX_GPIO_Init();
+  	MX_USART2_UART_Init();
+	DWT_Delay_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -121,6 +148,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    /* USER CODE END WHILE */
 	  float distance = measure(GPIOA, GPIO_PIN_1, GPIO_PIN_0);
 //	  memcpy(&tx_buff[0], &distance, sizeof(distance));
 //	  tx_buff[0] = distance;
@@ -128,8 +156,6 @@ int main(void)
 	  distance = measure(GPIOC, GPIO_PIN_3, GPIO_PIN_2);
 //	  memcpy(&tx_buff[4], &distance, sizeof(distance));
 //	  tx_buff[1] = distance;
-    /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
 	  HAL_UART_Transmit(&huart1, tx_buff, 10, 1000);
 	  HAL_Delay(10000);
@@ -286,7 +312,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : PA1 */
   GPIO_InitStruct.Pin = GPIO_PIN_1;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
