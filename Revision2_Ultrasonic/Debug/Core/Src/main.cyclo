@@ -1,0 +1,9 @@
+../Core/Src/main.c:74:10:DWT_Delay_Init	1
+../Core/Src/main.c:81:22:DWT_Delay_us	2
+../Core/Src/main.c:89:7:measure	5
+../Core/Src/main.c:125:5:main	2
+../Core/Src/main.c:186:6:SystemClock_Config	3
+../Core/Src/main.c:233:13:MX_TIM2_Init	4
+../Core/Src/main.c:278:13:MX_USART2_UART_Init	2
+../Core/Src/main.c:311:13:MX_GPIO_Init	1
+../Core/Src/main.c:345:6:Error_Handler	1
